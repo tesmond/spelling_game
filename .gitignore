@@ -207,3 +207,4 @@ marimo/_lsp/
 __marimo__/
 
 dictionary_cache.json
+game_log.txt

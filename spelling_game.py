@@ -6,6 +6,7 @@ and asks you to spell it correctly.
 
 import random
 import tkinter as tk
+from datetime import datetime
 from tkinter import messagebox, ttk
 
 import playsound3
@@ -79,6 +80,7 @@ class SpellingGame:
         self.score = 0
         self.results = []  # List of (word, user_answer, correct) tuples
         self.word_list = []
+        self.log_file = "game_log.txt"
 
         # Initialize components
         self.dict_manager = DictionaryManager(
@@ -88,12 +90,12 @@ class SpellingGame:
 
         # Create UI
         self.create_menu()
+        self.create_start_frame()
         self.create_game_frame()
         self.create_results_frame()
 
-        # Show game frame
-        self.show_game_frame()
-        self.start_new_game()
+        # Show start frame
+        self.show_start_frame()
 
     def create_menu(self):
         """Create the menu bar."""
@@ -103,11 +105,64 @@ class SpellingGame:
         # Game menu
         game_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Game", menu=game_menu)
-        game_menu.add_command(label="New Game", command=self.start_new_game)
+        game_menu.add_command(label="New Game", command=self.show_start_frame)
+        game_menu.add_separator()
+        game_menu.add_command(label="View Log", command=self.view_log)
         game_menu.add_separator()
         game_menu.add_command(label="Settings", command=self.show_settings)
         game_menu.add_separator()
         game_menu.add_command(label="Exit", command=self.root.quit)
+
+    def create_start_frame(self):
+        """Create the start screen."""
+        self.start_frame = ttk.Frame(self.root, padding="30")
+
+        # Title
+        title_label = ttk.Label(
+            self.start_frame, text="Spelling Game", style="Title.TLabel"
+        )
+        title_label.pack(pady=(50, 30))
+
+        # Game description
+        description_text = """Welcome to the Spelling Game!
+
+How to play:
+1. Listen to the word being spoken
+2. Read the definition for context
+3. Type your spelling in the input box
+4. Click Submit or press Enter
+5. If correct, you'll move to the next word
+6. If incorrect, you can try again or skip to the next word
+
+Use the Settings menu to customize:
+• Number of questions
+• Word length range
+• Voice selection
+• Dictionary source
+
+Click "Start New Game" to begin!"""
+
+        description_label = ttk.Label(
+            self.start_frame,
+            text=description_text,
+            justify=tk.LEFT,
+            wraplength=600,
+            font=("TkDefaultFont", 12),
+        )
+        description_label.pack(pady=(0, 50))
+
+        # Start game button
+        start_btn = ttk.Button(
+            self.start_frame,
+            text="Start New Game",
+            command=self.start_game_from_start_screen,
+            style="TButton",
+        )
+        start_btn.pack(pady=(0, 20))
+
+    def start_game_from_start_screen(self):
+        """Start a new game from the start screen."""
+        self.start_new_game()
 
     def create_game_frame(self):
         """Create the main game interface."""
@@ -236,17 +291,25 @@ class SpellingGame:
 
         # Play again button
         self.play_again_btn = ttk.Button(
-            self.results_frame, text="Play Again", command=self.start_new_game
+            self.results_frame, text="Play Again", command=self.show_start_frame
         )
         self.play_again_btn.pack(pady=(0, 10))
 
+    def show_start_frame(self):
+        """Show the start frame."""
+        self.game_frame.pack_forget()
+        self.results_frame.pack_forget()
+        self.start_frame.pack(fill=tk.BOTH, expand=True)
+
     def show_game_frame(self):
         """Show the game frame."""
+        self.start_frame.pack_forget()
         self.results_frame.pack_forget()
         self.game_frame.pack(fill=tk.BOTH, expand=True)
 
     def show_results_frame(self):
         """Show the results frame."""
+        self.start_frame.pack_forget()
         self.game_frame.pack_forget()
         self.results_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -255,10 +318,17 @@ class SpellingGame:
             text=f"Your Score: {self.score} / {self.settings['num_questions']}"
         )
 
+        # Log the game result
+        self.log_game_result()
+
         if self.score >= self.settings["num_questions"] // 2:
-            playsound3.playsound("sounds/cheer.mp3", block=False)  # Finished sound
+            playsound3.playsound(
+                "sounds/cheer.mp3", block=False
+            )  # Positive finished sound
         else:
-            playsound3.playsound("sounds/boo.mp3", block=False)  # Finished sound
+            playsound3.playsound(
+                "sounds/boo.mp3", block=False
+            )  # Negative finished sound
 
         # Populate results list
         self.results_listbox.delete(0, tk.END)
@@ -341,6 +411,7 @@ class SpellingGame:
         self.submit_btn.config(state="normal")
         self.word_entry.delete(0, tk.END)
         self.word_entry.focus()
+        self.word_entry.bind("<Return>", lambda e: self.submit_answer())
 
         # Speak the word after a short delay
         self.root.after(300, self.speak_word)
@@ -398,6 +469,10 @@ class SpellingGame:
             messagebox.showinfo("Info", "Please enter a word.")
             return
 
+        self.word_entry.config(state="disabled")
+        self.submit_btn.config(state="disabled")
+
+        self.word_entry.unbind("<Return>")
         is_correct = user_answer == correct_answer
 
         if is_correct:
@@ -410,8 +485,8 @@ class SpellingGame:
 
             # Move to next question after a short delay
             self.question_number += 1
-            self.word_entry.config(state="disabled")
-            self.root.after(1500, self.load_next_question)
+
+            self.root.after(1000, self.load_next_question)
         else:
             self.feedback_label.config(
                 text="✗ Incorrect. Try again or move to the next question.",
@@ -425,6 +500,58 @@ class SpellingGame:
 
             # Disable word entry during choice
             self.word_entry.config(state="disabled")
+
+    def log_game_result(self):
+        """Log the game result to a file."""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = (
+            f"{timestamp} - Score: {self.score}/{self.settings['num_questions']}\n"
+        )
+        try:
+            with open(self.log_file, "a") as f:
+                f.write(log_entry)
+        except Exception as e:
+            print(f"Error logging game result: {e}")
+
+    def view_log(self):
+        """View the game log in a dialog."""
+        try:
+            with open(self.log_file, "r") as f:
+                log_content = f.read()
+        except FileNotFoundError:
+            log_content = "No game log found. Play some games first!"
+        except Exception as e:
+            log_content = f"Error reading log: {e}"
+
+        # Create a dialog to show the log
+        log_dialog = tk.Toplevel(self.root)
+        log_dialog.title("Game Log")
+        log_dialog.geometry("600x400")
+        log_dialog.transient(self.root)
+        log_dialog.grab_set()
+
+        # Text area for log
+        text_frame = ttk.Frame(log_dialog, padding="10")
+        text_frame.pack(fill=tk.BOTH, expand=True)
+
+        scrollbar = ttk.Scrollbar(text_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        text_area = tk.Text(
+            text_frame,
+            wrap=tk.WORD,
+            yscrollcommand=scrollbar.set,
+            font=("TkDefaultFont", 12),
+        )
+        text_area.pack(fill=tk.BOTH, expand=True)
+        scrollbar.config(command=text_area.yview)
+
+        text_area.insert(tk.END, log_content)
+        text_area.config(state="disabled")
+
+        # Close button
+        close_btn = ttk.Button(log_dialog, text="Close", command=log_dialog.destroy)
+        close_btn.pack(pady=10)
 
     def run(self):
         """Run the game."""
