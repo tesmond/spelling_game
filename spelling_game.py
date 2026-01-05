@@ -291,7 +291,7 @@ Click "Start New Game" to begin!"""
 
         # Play again button
         self.play_again_btn = ttk.Button(
-            self.results_frame, text="Play Again", command=self.show_start_frame
+            self.results_frame, text="Play Again", command=self.start_new_game
         )
         self.play_again_btn.pack(pady=(0, 10))
 
