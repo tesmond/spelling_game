@@ -14,7 +14,7 @@ class SettingsDialog:
         self.result = None
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Settings")
-        self.dialog.geometry("300x220")
+        self.dialog.geometry("350x280")
         self.dialog.resizable(False, False)
         self.dialog.transient(parent)
         self.dialog.grab_set()
@@ -64,9 +64,28 @@ class SettingsDialog:
             frame, text="Use downloaded dictionary", variable=self.use_downloaded_var
         ).grid(row=3, column=0, columnspan=2, pady=5)
 
+        # Voice selection
+        ttk.Label(frame, text="Voice:").grid(row=4, column=0, sticky=tk.W, pady=5)
+        self.voice_var = tk.StringVar(value=settings.get("voice", "en-GB-SoniaNeural"))
+        voice_combo = ttk.Combobox(
+            frame,
+            textvariable=self.voice_var,
+            width=18,
+            state="readonly",
+            values=[
+                "en-GB-SoniaNeural",
+                "en-GB-RyanNeural",
+                "en-US-AriaNeural",
+                "en-US-GuyNeural",
+                "en-AU-NatashaNeural",
+                "en-AU-WilliamNeural",
+            ],
+        )
+        voice_combo.grid(row=4, column=1, pady=5)
+
         # Buttons
         btn_frame = ttk.Frame(frame)
-        btn_frame.grid(row=4, column=0, columnspan=2, pady=20)
+        btn_frame.grid(row=5, column=0, columnspan=2, pady=20)
 
         ttk.Button(btn_frame, text="Save", command=self.save).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="Cancel", command=self.cancel).pack(
@@ -91,6 +110,7 @@ class SettingsDialog:
                 "min_length": min_len,
                 "max_length": max_len,
                 "use_downloaded_dict": self.use_downloaded_var.get(),
+                "voice": self.voice_var.get(),
             }
             self.dialog.destroy()
         except ValueError:

@@ -50,8 +50,9 @@ Access settings from the Game menu:
 
 - tkinter (standard library)
 - json, urllib, gzip (standard library)
-- pyttsx3 (text-to-speech)
-- playsound3 (audio playback)
+- edge-tts (Microsoft Edge neural text-to-speech)
+- pygame (audio playback)
+- playsound3 (sound effects)
 
 ## Controls
 

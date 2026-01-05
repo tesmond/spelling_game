@@ -69,6 +69,7 @@ class SpellingGame:
             "min_length": 5,
             "max_length": 7,
             "use_downloaded_dict": False,
+            "voice": "en-GB-SoniaNeural",
         }
 
         # Game state
@@ -83,7 +84,7 @@ class SpellingGame:
         self.dict_manager = DictionaryManager(
             use_downloaded=self.settings["use_downloaded_dict"]
         )
-        self.tts = TextToSpeech()
+        self.tts = TextToSpeech(voice=self.settings["voice"])
 
         # Create UI
         self.create_menu()
@@ -128,13 +129,23 @@ class SpellingGame:
         )
         def_frame.pack(fill=tk.X, pady=(0, 30))
 
+        # Container for definition text and speaker button
+        def_container = ttk.Frame(def_frame)
+        def_container.pack(fill=tk.BOTH, expand=True)
+
         self.definition_label = ttk.Label(
-            def_frame,
+            def_container,
             text="",
             wraplength=600,
             justify=tk.CENTER,
         )
         self.definition_label.pack(pady=10)
+
+        # Speaker button in bottom right
+        speaker_btn = ttk.Button(
+            def_frame, text="🔊", width=3, command=self.speak_definition
+        )
+        speaker_btn.place(relx=1.0, rely=1.0, anchor="se", x=-5, y=-5)
 
         # Replay button
         self.replay_btn = ttk.Button(
@@ -194,7 +205,10 @@ class SpellingGame:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         self.results_listbox = tk.Listbox(
-            list_frame, yscrollcommand=scrollbar.set, height=12, font="TkDefaultFont"
+            list_frame,
+            yscrollcommand=scrollbar.set,
+            height=12,
+            font=("TkDefaultFont", 14),
         )
         self.results_listbox.pack(fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.results_listbox.yview)
@@ -243,11 +257,14 @@ class SpellingGame:
 
         if dialog.result:
             old_use_downloaded = self.settings.get("use_downloaded_dict", False)
+            old_voice = self.settings.get("voice", "en-GB-SoniaNeural")
             self.settings = dialog.result
             if self.settings["use_downloaded_dict"] != old_use_downloaded:
                 self.dict_manager = DictionaryManager(
                     use_downloaded=self.settings["use_downloaded_dict"]
                 )
+            if self.settings["voice"] != old_voice:
+                self.tts = TextToSpeech(voice=self.settings["voice"])
 
     def start_new_game(self):
         """Start a new game."""
@@ -302,6 +319,13 @@ class SpellingGame:
     def speak_word(self):
         """Speak the current word."""
         self.tts.speak(f"Spell the word: {self.current_word}")
+        self.word_entry.focus()
+
+    def speak_definition(self):
+        """Speak the current definition."""
+        if self.current_definition:
+            self.tts.speak(self.current_definition)
+        self.word_entry.focus()
 
     def submit_answer(self):
         """Submit the user's answer."""
