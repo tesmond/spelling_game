@@ -21,7 +21,7 @@ class SpellingGame:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Spelling Game")
-        self.root.geometry("800x700")
+        self.root.geometry("800x640")
         self.root.minsize(700, 600)
         self.root.protocol("WM_DELETE_WINDOW", self.root.destroy)
         self.root.configure(bg="#f0f0f0")
@@ -125,7 +125,10 @@ class SpellingGame:
 
         # Definition frame
         def_frame = ttk.LabelFrame(
-            self.game_frame, text="Definition", padding="20", style="Custom.TLabelframe"
+            self.game_frame,
+            text="Definition",
+            padding="20",
+            style="Custom.TLabelframe",
         )
         def_frame.pack(fill=tk.X, pady=(0, 30))
 
@@ -137,7 +140,8 @@ class SpellingGame:
             def_container,
             text="",
             wraplength=600,
-            justify=tk.CENTER,
+            justify=tk.LEFT,
+            padding="10",
         )
         self.definition_label.pack(pady=10)
 
@@ -180,6 +184,23 @@ class SpellingGame:
             self.game_frame, text="", style="Feedback.TLabel"
         )
         self.feedback_label.pack(pady=(0, 10))
+
+        # Try Again / Next button frame (hidden initially)
+        self.action_button_frame = ttk.Frame(self.game_frame)
+        self.action_button_frame.pack(pady=(0, 10))
+
+        self.try_again_btn = ttk.Button(
+            self.action_button_frame, text="Try Again", command=self.try_again
+        )
+        self.try_again_btn.pack(side=tk.LEFT, padx=5)
+
+        self.next_btn = ttk.Button(
+            self.action_button_frame, text="Next", command=self.next_question
+        )
+        self.next_btn.pack(side=tk.LEFT, padx=5)
+
+        # Hide action buttons initially
+        self.action_button_frame.pack_forget()
 
     def create_results_frame(self):
         """Create the results screen."""
@@ -310,11 +331,19 @@ class SpellingGame:
         self.score_label.config(text=f"Score: {self.score}")
         self.definition_label.config(text=self.current_definition)
         self.feedback_label.config(text="")
+
+        # Show submit button, hide action buttons
+        self.submit_btn.pack(pady=(0, 20))
+        self.action_button_frame.pack_forget()
+
+        # Re-enable input and submit button
+        self.word_entry.config(state="normal")
+        self.submit_btn.config(state="normal")
         self.word_entry.delete(0, tk.END)
         self.word_entry.focus()
 
-        # Speak the word after a 1 second delay
-        self.root.after(1000, self.speak_word)
+        # Speak the word after a short delay
+        self.root.after(300, self.speak_word)
 
     def speak_word(self):
         """Speak the current word."""
@@ -326,6 +355,39 @@ class SpellingGame:
         if self.current_definition:
             self.tts.speak(self.current_definition)
         self.word_entry.focus()
+
+    def try_again(self):
+        """Reset the form and replay the word."""
+        # Clear entry and re-enable it
+        self.word_entry.config(state="normal")
+        self.word_entry.delete(0, tk.END)
+        self.word_entry.focus()
+
+        # Clear feedback
+        self.feedback_label.config(text="")
+
+        # Hide action buttons, show submit button
+        self.action_button_frame.pack_forget()
+        self.submit_btn.pack(pady=(0, 20))
+
+        # Replay the word
+        self.speak_word()
+
+    def next_question(self):
+        """Move to the next question and record as incorrect."""
+        user_answer = self.word_entry.get().strip().lower()
+
+        # Record result as incorrect
+        self.results.append(
+            (self.current_word, user_answer if user_answer else "(skipped)", False)
+        )
+
+        # Re-enable word entry
+        self.word_entry.config(state="normal")
+
+        # Move to next question
+        self.question_number += 1
+        self.load_next_question()
 
     def submit_answer(self):
         """Submit the user's answer."""
@@ -342,19 +404,27 @@ class SpellingGame:
             self.score += 1
             self.feedback_label.config(text="✓ Correct!", foreground="green")
             playsound3.playsound("sounds/success.mp3", block=False)  # Success sound
+
+            # Record result
+            self.results.append((self.current_word, user_answer, is_correct))
+
+            # Move to next question after a short delay
+            self.question_number += 1
+            self.word_entry.config(state="disabled")
+            self.root.after(1500, self.load_next_question)
         else:
             self.feedback_label.config(
-                text=f"✗ Incorrect. The correct spelling is: {self.current_word}",
+                text="✗ Incorrect. Try again or move to the next question.",
                 foreground="red",
             )
             playsound3.playsound("sounds/error.mp3", block=False)  # Error sound
 
-        # Record result
-        self.results.append((self.current_word, user_answer, is_correct))
+            # Hide submit button, show Try Again/Next buttons
+            self.submit_btn.pack_forget()
+            self.action_button_frame.pack(pady=(0, 10))
 
-        # Move to next question after a short delay
-        self.question_number += 1
-        self.root.after(1500, self.load_next_question)
+            # Disable word entry during choice
+            self.word_entry.config(state="disabled")
 
     def run(self):
         """Run the game."""
